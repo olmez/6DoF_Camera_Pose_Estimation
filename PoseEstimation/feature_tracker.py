@@ -13,12 +13,20 @@ class FeatureTracker():
         self.feature_points_current_image = np.array([None])
         self.descriptors_current_image = np.array([None])
 
-        self.matched_feature_points = np.array([None])
+        self.matched_points = np.array([None])
+        self.descriptor_points = np.array([None])
 
-        self.feature_detector = cv2.ORB_create(nfeatures=1000000)
-        self.matcher = cv2.BFMatcher(cv2.NORM_L1, crossCheck=True)
+        self.feature_detector = cv2.ORB_create(nfeatures=100000)
+        # Define FLANN parameters
+        FLANN_INDEX_LSH = 6
+        index_params = dict(algorithm = FLANN_INDEX_LSH,
+                            table_number = 6,
+                            key_size = 12,
+                            multi_probe_level = 1)
+        search_params = dict(checks = 50)
+        self.matcher = cv2.FlannBasedMatcher(index_params, search_params)
 
-        self.feature_matches = []
+        self.reference_image = None
 
 
     def Step(self, image, points_2D):
@@ -32,7 +40,8 @@ class FeatureTracker():
     
     def InitializeFeaturePointsWithGivenPoints(self, image, points: np.array):
         self.feature_points_reference_image, self.descriptors_reference_image = self.feature_detector.compute(image, np.array([cv2.KeyPoint(point[0], point[1], _size=2) for point in points]), None)
-        self.matched_feature_points = self.feature_points_reference_image
+        self.matched_points = self.feature_points_reference_image
+        self.reference_image = image
         self.mode = FeatureDetectionMode.ACTIVE
 
 
@@ -42,19 +51,23 @@ class FeatureTracker():
 
 
     def MatchPointFeature(self, image):
-        matches = self.matcher.match(self.descriptors_reference_image, self.descriptors_current_image)
+        matches = self.matcher.knnMatch(self.descriptors_reference_image, self.descriptors_current_image, k=2)
 
         matched_points = []
-        for m in matches:
+        descriptor_points = []
+        for m, n in matches:
             matched_points.append(self.feature_points_current_image[m.trainIdx])
+            descriptor_points.append(self.descriptors_current_image[m.trainIdx])
 
-        self.matched_feature_points = np.array(matched_points)
+        self.matched_points = np.array(matched_points)
+        self.descriptor_points = np.array(descriptor_points)
+        
         self._SetCurrentsAsRefences()
 
     
     def _SetCurrentsAsRefences(self):
-        self.feature_points_reference_image = self.matched_feature_points
-        self.descriptors_reference_image = self.descriptors_current_image
+        self.feature_points_reference_image = self.matched_points
+        self.descriptors_reference_image = self.descriptor_points
 
 
     def _FindNearest(self, reference_points, current_points):

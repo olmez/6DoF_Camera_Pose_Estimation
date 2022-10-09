@@ -24,8 +24,8 @@ if __name__ == "__main__":
     for image in image_list:
         camera.SetImage(PurePath(case_study_path, image))
         feature_tracker.Step(image=camera.image, points_2D=points_2D)
-        camera.ShowFeaturePointsOnImage(feature_tracker.matched_feature_points, color=(0, 0, 255))
-        cv2.imshow('image', camera.image)
+        image_with_points = camera.ShowFeaturePointsOnImage(feature_tracker.matched_points, color=(0, 0, 255))
+        cv2.imshow('image', image_with_points)
         cv2.waitKey(0)
 
     cv2.destroyAllWindows()

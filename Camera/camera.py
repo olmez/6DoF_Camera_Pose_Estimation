@@ -16,7 +16,7 @@ class Camera:
 
 
     def SetImage(self, image_path: PurePath):
-        self.image = cv2.imread(str(image_path)) #cv2.IMREAD_GRAYSCALE
+        self.image = cv2.imread(str(image_path), cv2.IMREAD_GRAYSCALE)
 
 
     def SetFeaturePoints(self, points: np.array):
@@ -24,8 +24,10 @@ class Camera:
 
 
     def ShowFeaturePointsOnImage(self, feature_points, color=(0, 0, 255)):
+        image_with_points = self.image.copy()
         for point in feature_points:  
-            self.image = cv2.circle(self.image, (point[0], point[1]), radius=4, color=color, thickness=-1)
+            cv2.circle(image_with_points, (int(point.pt[0]), int(point.pt[1])), radius=4, color=color, thickness=-1)
+        return image_with_points
 
 
     def ResetPose(self):
