@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from Utils.reader_functions import read_dict_from_yaml
+from Utils.reader import read_dict_from_yaml
 
 
 @dataclass

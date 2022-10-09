@@ -1,7 +1,7 @@
 import yaml
 import os
 from pathlib import PurePath
-from .printer_functions import Bcolors
+from .printer import Bcolors
 
 
 def list_directories(path: str):
