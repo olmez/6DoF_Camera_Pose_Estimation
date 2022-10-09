@@ -16,7 +16,8 @@ class FeatureTracker():
         self.matched_points = np.array([None])
         self.descriptor_points = np.array([None])
 
-        self.feature_detector = cv2.ORB_create(nfeatures=100000)
+        self.feature_detector = cv2.ORB_create(nfeatures=100000, edgeThreshold = 0, patchSize=32)
+        
         # Define FLANN parameters
         FLANN_INDEX_LSH = 6
         index_params = dict(algorithm = FLANN_INDEX_LSH,
@@ -24,6 +25,8 @@ class FeatureTracker():
                             key_size = 12,
                             multi_probe_level = 1)
         search_params = dict(checks = 50)
+        
+        # Initiate FLANN matcher        
         self.matcher = cv2.FlannBasedMatcher(index_params, search_params)
 
         self.reference_image = None
@@ -34,12 +37,18 @@ class FeatureTracker():
             self.InitializeFeaturePointsWithGivenPoints(image=image, points=points_2D)
             return True
         self.DetectPointFeature(image=image)
-        self.MatchPointFeature(image=image)
+        self.MatchPointFeature()
         return True
 
     
     def InitializeFeaturePointsWithGivenPoints(self, image, points: np.array):
-        self.feature_points_reference_image, self.descriptors_reference_image = self.feature_detector.compute(image, np.array([cv2.KeyPoint(point[0], point[1], _size=2) for point in points]), None)
+        feature_points_reference_image = self.feature_detector.detect(image, None)
+        feature_points_reference_image, descriptors_reference_image = self.feature_detector.compute(image, feature_points_reference_image, None)
+        idx = []
+        for point in points:
+            idx.append(self._FindNearest(point, [[fpoint.pt[0], fpoint.pt[1]] for fpoint in feature_points_reference_image]))
+        self.feature_points_reference_image = np.array(feature_points_reference_image)[idx]
+        self.descriptors_reference_image = np.array(descriptors_reference_image)[idx]
         self.matched_points = self.feature_points_reference_image
         self.reference_image = image
         self.mode = FeatureDetectionMode.ACTIVE
@@ -50,14 +59,15 @@ class FeatureTracker():
         self.feature_points_current_image, self.descriptors_current_image = self.feature_detector.compute(image, self.feature_points_current_image, None)
 
 
-    def MatchPointFeature(self, image):
+    def MatchPointFeature(self):
         matches = self.matcher.knnMatch(self.descriptors_reference_image, self.descriptors_current_image, k=2)
 
         matched_points = []
         descriptor_points = []
         for m, n in matches:
-            matched_points.append(self.feature_points_current_image[m.trainIdx])
-            descriptor_points.append(self.descriptors_current_image[m.trainIdx])
+            if m.distance < (1 * n.distance):
+                matched_points.append(self.feature_points_current_image[m.trainIdx])
+                descriptor_points.append(self.descriptors_current_image[m.trainIdx])
 
         self.matched_points = np.array(matched_points)
         self.descriptor_points = np.array(descriptor_points)
@@ -74,6 +84,6 @@ class FeatureTracker():
         current_points = np.asarray(current_points)
         reference_points = np.asarray(reference_points)
         idx = np.linalg.norm(current_points - reference_points, axis=1).argmin()
-        return current_points[idx].astype(int)
+        return idx
 
     

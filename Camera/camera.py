@@ -16,7 +16,7 @@ class Camera:
 
 
     def SetImage(self, image_path: PurePath):
-        self.image = cv2.imread(str(image_path), cv2.IMREAD_GRAYSCALE)
+        self.image = cv2.imread(str(image_path))
 
 
     def SetFeaturePoints(self, points: np.array):
