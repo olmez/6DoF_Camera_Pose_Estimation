@@ -23,9 +23,9 @@ class Camera:
         self.feature_points = points
 
 
-    def ShowFeaturePointsOnImage(self):
-        for point in self.feature_points:  
-            self.image = cv2.circle(self.image, (point[0][0], point[0][1]), radius=4, color=(0, 0, 255), thickness=-1)
+    def ShowFeaturePointsOnImage(self, feature_points, color=(0, 0, 255)):
+        for point in feature_points:  
+            self.image = cv2.circle(self.image, (point[0], point[1]), radius=4, color=color, thickness=-1)
 
 
     def ResetPose(self):

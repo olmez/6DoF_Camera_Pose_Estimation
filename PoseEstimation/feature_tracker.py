@@ -9,19 +9,27 @@ class FeatureTracker():
 
         self.feature_points_reference_image = np.array([None])
         self.feature_points_current_image = np.array([None])
+        self.matched_feature_points = np.array([])
 
         self.feature_detector = cv2.FastFeatureDetector_create()
 
         self.feature_matches = []
 
+
+    def Step(self, image, points_2D):
+        if self.mode == FeatureDetectionMode.INITIALIZATION:
+            self.InitializeFeaturePointsWithGivenPoints(points=points_2D)
+        self.DetectPointFeature(image=image)
+        self.MatchPointFeature()
+
     
     def InitializeFeaturePointsWithGivenPoints(self, points: np.array):
-        self.feature_points_reference_image = np.array([[point[0][0], point[0][1]] for point in points])
+        self.feature_points_reference_image = np.array([[point[0], point[1]] for point in points])
         self.mode = FeatureDetectionMode.ACTIVE
 
 
-    def DetectPointFeature(self, img):
-        feature_points = self.feature_detector.detect(img, None)
+    def DetectPointFeature(self, image):
+        feature_points = self.feature_detector.detect(image, None)
         self.feature_points_current_image = np.array([[point.pt[0], point.pt[1]] for point in feature_points])
 
 
@@ -30,7 +38,8 @@ class FeatureTracker():
         for point in self.feature_points_reference_image:
             matched_points.append(self._FindNearest(point, self.feature_points_current_image))
 
-        self._SetCurrentsAsRefences(np.array(matched_points))
+        self.matched_feature_points = np.array(matched_points)
+        self._SetCurrentsAsRefences(self.matched_feature_points)
 
     
     def _SetCurrentsAsRefences(self, feature_points):
@@ -41,6 +50,6 @@ class FeatureTracker():
         current_points = np.asarray(current_points)
         reference_points = np.asarray(reference_points)
         idx = np.linalg.norm(current_points - reference_points, axis=1).argmin()
-        return current_points[idx]
+        return current_points[idx].astype(int)
 
     
