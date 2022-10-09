@@ -8,42 +8,53 @@ class FeatureTracker():
         self.mode = FeatureDetectionMode.INITIALIZATION
 
         self.feature_points_reference_image = np.array([None])
-        self.feature_points_current_image = np.array([None])
-        self.matched_feature_points = np.array([])
+        self.descriptors_reference_image = np.array([None])
 
-        self.feature_detector = cv2.FastFeatureDetector_create()
+        self.feature_points_current_image = np.array([None])
+        self.descriptors_current_image = np.array([None])
+
+        self.matched_feature_points = np.array([None])
+
+        self.feature_detector = cv2.ORB_create(nfeatures=1000000)
+        self.matcher = cv2.BFMatcher(cv2.NORM_L1, crossCheck=True)
 
         self.feature_matches = []
 
 
     def Step(self, image, points_2D):
         if self.mode == FeatureDetectionMode.INITIALIZATION:
-            self.InitializeFeaturePointsWithGivenPoints(points=points_2D)
+            self.InitializeFeaturePointsWithGivenPoints(image=image, points=points_2D)
+            return True
         self.DetectPointFeature(image=image)
-        self.MatchPointFeature()
+        self.MatchPointFeature(image=image)
+        return True
 
     
-    def InitializeFeaturePointsWithGivenPoints(self, points: np.array):
-        self.feature_points_reference_image = np.array([[point[0], point[1]] for point in points])
+    def InitializeFeaturePointsWithGivenPoints(self, image, points: np.array):
+        self.feature_points_reference_image, self.descriptors_reference_image = self.feature_detector.compute(image, np.array([cv2.KeyPoint(point[0], point[1], _size=2) for point in points]), None)
+        self.matched_feature_points = self.feature_points_reference_image
         self.mode = FeatureDetectionMode.ACTIVE
 
 
     def DetectPointFeature(self, image):
-        feature_points = self.feature_detector.detect(image, None)
-        self.feature_points_current_image = np.array([[point.pt[0], point.pt[1]] for point in feature_points])
+        self.feature_points_current_image = self.feature_detector.detect(image, None)
+        self.feature_points_current_image, self.descriptors_current_image = self.feature_detector.compute(image, self.feature_points_current_image, None)
 
 
-    def MatchPointFeature(self):
+    def MatchPointFeature(self, image):
+        matches = self.matcher.match(self.descriptors_reference_image, self.descriptors_current_image)
+
         matched_points = []
-        for point in self.feature_points_reference_image:
-            matched_points.append(self._FindNearest(point, self.feature_points_current_image))
+        for m in matches:
+            matched_points.append(self.feature_points_current_image[m.trainIdx])
 
         self.matched_feature_points = np.array(matched_points)
-        self._SetCurrentsAsRefences(self.matched_feature_points)
+        self._SetCurrentsAsRefences()
 
     
-    def _SetCurrentsAsRefences(self, feature_points):
-        self.feature_points_reference_image = feature_points
+    def _SetCurrentsAsRefences(self):
+        self.feature_points_reference_image = self.matched_feature_points
+        self.descriptors_reference_image = self.descriptors_current_image
 
 
     def _FindNearest(self, reference_points, current_points):
